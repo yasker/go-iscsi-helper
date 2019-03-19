@@ -18,6 +18,7 @@ type TestSuite struct {
 	imageFile string
 	localIP   string
 	ne        *util.NamespaceExecutor
+	done      chan struct{}
 }
 
 var _ = Suite(&TestSuite{})
@@ -49,10 +50,11 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	s.ne, err = util.NewNamespaceExecutor("/host/proc/1/ns/")
 	c.Assert(err, IsNil)
 
-	err = StartDaemon(false)
+	s.done = make(chan struct{})
+	err = StartDaemon(false, s.done)
 	c.Assert(err, IsNil)
 
-	err = StartDaemon(false)
+	err = StartDaemon(false, s.done)
 	c.Assert(err, IsNil)
 }
 
@@ -62,6 +64,8 @@ func (s *TestSuite) TearDownSuite(c *C) {
 
 	err = ShutdownTgtd()
 	c.Assert(err, IsNil)
+
+	<-s.done
 }
 
 func (s *TestSuite) TestFlow(c *C) {

@@ -151,7 +151,7 @@ func UnbindInitiator(tid int, initiator string) error {
 }
 
 // StartDaemon will start tgtd daemon, prepare for further commands
-func StartDaemon(debug bool) error {
+func StartDaemon(debug bool, done chan struct{}) error {
 	if daemonIsRunning {
 		return nil
 	}
@@ -161,7 +161,7 @@ func StartDaemon(debug bool) error {
 	if err != nil {
 		return err
 	}
-	go startDaemon(logf, debug)
+	go startDaemon(logf, debug, done)
 
 	// Wait until daemon is up
 	daemonIsRunning = false
@@ -178,7 +178,7 @@ func StartDaemon(debug bool) error {
 	return nil
 }
 
-func startDaemon(logf *os.File, debug bool) {
+func startDaemon(logf *os.File, debug bool, done chan struct{}) {
 	defer logf.Close()
 
 	opts := []string{
@@ -192,10 +192,11 @@ func startDaemon(logf *os.File, debug bool) {
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(mw, "go-iscsi-helper: command failed: %v\n", err)
-		panic(err)
+		fmt.Fprintf(mw, "go-iscsi-helper: tgt daemon failed: %v\n", err)
+	} else {
+		fmt.Fprintln(mw, "go-iscsi-helper: tgt daemon finished")
 	}
-	fmt.Fprintln(mw, "go-iscsi-helper: done")
+	close(done)
 }
 
 func CheckTargetForBackingStore(name string) bool {
